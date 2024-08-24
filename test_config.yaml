@@ -1,0 +1,6 @@
+staging:
+  test_url: "https://candymapper.com"
+prod:
+  test_url: "https://candymapper.com"
+test:
+  test_url: "https://candymapper.com"
