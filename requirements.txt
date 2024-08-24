@@ -3,3 +3,9 @@ pytest==7.4.0
 webdriver-manager
 PyYaml
 allure-pytest
+pyautogui
+deprecation
+jsonpath-ng
+pyperclip
+assertpy
+deepdiff
