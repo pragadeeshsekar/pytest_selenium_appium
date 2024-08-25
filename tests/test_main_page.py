@@ -1,10 +1,13 @@
 import time
 
+import pytest
+
 from tests.test_base import BaseTest
 
 
 class TestMainPage(BaseTest):
 
+    @pytest.mark.tags("ui", "prod", "staging", "test")
     def test_form_send(self):
         self.main_page.pop_up_close.click()
         self.main_page.pop_up_close.is_not_present()
@@ -14,6 +17,7 @@ class TestMainPage(BaseTest):
         self.main_page.send_button.click()
         self.main_page.submit_success.is_present(timeout=20)
 
+    @pytest.mark.tags("ui", "test")
     def test_county_list(self):
         self.main_page.county_iframe.scroll_to_view()
         time.sleep(10)

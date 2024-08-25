@@ -3,3 +3,4 @@ pytest==7.4.0
 webdriver-manager
 PyYaml
 allure-pytest
+pytest-tags @ git+https://github.com/Projectplace/pytest-tags@1.8.1
