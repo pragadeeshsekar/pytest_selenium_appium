@@ -1,5 +1,5 @@
 selenium==4.23.1
-pytest==7.4.0
+pytest
 webdriver-manager
 PyYaml
 allure-pytest

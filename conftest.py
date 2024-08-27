@@ -24,6 +24,7 @@ def pytest_addoption(parser):
     parser.addoption("--env", action="store", default="test",
                      help="test environment name",
                      choices=("prod", "staging", "test"))
+    parser.addoption("--mobile", action="store_true", help="use mobile user-agent")
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +33,7 @@ def write_allure_environment(request):
     yield
     allure_report_dir = request.config.option.allure_report_dir
     if allure_report_dir:
-        caps = pytest.driver.caps
+        caps = request.cls.driver.caps
         driver_info = list(caps[caps['browserName']].items())[0]
         AllureEnvironmentParser(allure_report_dir).update_allure_env(
             {"Browser": caps['browserName'], "Browser-Version": caps['browserVersion'],
@@ -40,53 +41,6 @@ def write_allure_environment(request):
              "Environment": request.config.option.env,
              "Platform": caps['platformName']}
         )
-
-
-# https://stackoverflow.com/a/61433141/4515129
-# @pytest.fixture
-# # Instantiates Page Objects
-# def pages():
-#     sign_page = GoogleSearch(driver)
-#     return locals()
-
-def pytest_sessionstart(session):
-    browser = session.config.option.browser
-    env = session.config.option.env
-    with open(TEST_CONFIG, 'r') as fd:
-        config = yaml.load(fd, Loader=yaml.loader.SafeLoader)
-    base_url = config[env]["test_url"]
-    pytest.browser = browser
-    pytest.base_url = base_url
-    if browser == "firefox":
-        pytest.driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
-    # elif browser == "remote":
-    #     capabilities = {
-    #         'browserName': 'firefox',
-    #         'javascriptEnabled': True
-    #     }
-    #     driver = webdriver.Remote(command_executor="http://127.0.0.1:4444/wd/hub",
-    #                               options=capabilities)
-    elif browser == "chrome_headless":
-        opts = webdriver.ChromeOptions()
-        opts.add_argument("--headless")
-        opts.add_argument("--disable-dev-shm-usage")
-        opts.add_argument("--no-sandbox")
-        pytest.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
-                                         options=opts)
-    else:
-        pytest.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
-    pytest.driver.implicitly_wait(5)
-    pytest.driver.maximize_window()
-    pytest.driver.get(base_url)
-    # yield
-    # if request.node.rep_call.failed:
-    #     screenshot_name = 'screenshot on failure: %s' % datetime.now().strftime('%d/%m/%Y, %H:%M:%S')
-    #     allure.attach(driver.get_screenshot_as_png(), name=screenshot_name,
-    #                   attachment_type=allure.attachment_type.PNG)
-
-
-def pytest_sessionfinish():
-    pytest.driver.quit()
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -100,3 +54,47 @@ def pytest_runtest_makereport(item, call):
     # be "setup", "call", "teardown"
 
     setattr(item, "rep_" + rep.when, rep)
+
+
+@pytest.fixture(scope="class", autouse=True)
+def driver(request):
+    browser = request.config.option.browser
+    env = request.config.option.env
+    is_mobile = request.config.option.mobile
+    with open(TEST_CONFIG, 'r') as fd:
+        test_config = yaml.load(fd, Loader=yaml.loader.SafeLoader)
+    if browser == "firefox":
+        driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
+    elif browser == "chrome_headless":
+        opts = webdriver.ChromeOptions()
+        opts.add_argument("--headless")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--no-sandbox")
+        if is_mobile:
+            # iphoneX emulation
+            mobile_emulation = {
+                "deviceMetrics": {"width": 375, "height": 812, "pixelRatio": 3.0},
+                "userAgent": "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) "
+                             "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
+            }
+            opts.add_experimental_option("mobileEmulation", mobile_emulation)
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
+                                  options=opts)
+    else:
+        opts = webdriver.ChromeOptions()
+        if is_mobile:
+            # iphoneX emulation
+            mobile_emulation = {
+                "deviceMetrics": {"width": 375, "height": 812, "pixelRatio": 3.0},
+                "userAgent": "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) "
+                             "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
+            }
+            opts.add_experimental_option("mobileEmulation", mobile_emulation)
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
+                                  options=opts)
+    driver.implicitly_wait(5)
+    driver.maximize_window()
+    driver.get(test_config[env]["test_url"])
+    request.cls.driver = driver
+    yield driver
+    driver.quit()
