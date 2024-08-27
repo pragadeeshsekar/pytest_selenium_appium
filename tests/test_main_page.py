@@ -15,7 +15,8 @@ class TestMainPage(BaseTest):
         self.main_page.email.send_keys("joker@gmail.com")
         time.sleep(5)
         self.main_page.send_button.click()
-        self.main_page.submit_success.is_present(timeout=20)
+        assert self.main_page.submit_success.is_present(timeout=20)
+        self.attach_screenshot(self.test_form_send.__name__)
 
     @pytest.mark.tags("ui", "test")
     def test_county_list(self):

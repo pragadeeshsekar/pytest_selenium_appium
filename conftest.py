@@ -1,3 +1,7 @@
+from datetime import datetime
+import time
+
+import allure
 import pytest
 import yaml
 from selenium import webdriver
@@ -98,3 +102,20 @@ def driver(request):
     request.cls.driver = driver
     yield driver
     driver.quit()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def check_if_failed(request):
+    yield
+    # request.node is an "item" because we use the default
+    # "function" scope
+    if request.node.rep_setup.failed:
+        print("setting up a test failed!", request.node.nodeid)
+    elif request.node.rep_setup.passed:
+        if request.node.rep_call.failed:
+            file_name = f'{request.node.nodeid}_{datetime.today().strftime("%Y-%m-%d_%H:%M")}.png'
+            file_name = file_name.replace("/", "_").replace("::", "__")
+            allure.attach(request.cls.driver.get_screenshot_as_png(),
+                          name=file_name,
+                          attachment_type=allure.attachment_type.PNG)
+            print("executing test failed", request.node.nodeid)
