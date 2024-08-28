@@ -2,6 +2,7 @@ import allure
 import pytest
 
 from core.pages.main_page import MainPage
+from core.pages.sports_page import SportsPage
 
 
 class BaseTest:
@@ -10,6 +11,7 @@ class BaseTest:
     @classmethod
     def setup_class(cls):
         cls.main_page = MainPage(cls.driver)
+        cls.sports_page = SportsPage(cls.driver)
 
     def attach_screenshot(self, function_name):
         allure.attach(self.driver.get_screenshot_as_png(),
