@@ -1,6 +1,6 @@
 staging:
   test_url: "https://indianexpress.com/"
 prod:
-  test_url: "https://candymapper.com"
+  test_url: "https://indianexpress.com/"
 test:
-  test_url: "https://candymapper.com"
+  test_url: "https://indianexpress.com/"

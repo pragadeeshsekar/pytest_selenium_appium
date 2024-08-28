@@ -162,6 +162,11 @@ class Element(ABC):
     def switch_to_default_content(self):
         self.driver.switch_to.default_content()
 
+    def get_text(self):
+        element = self.get_element()
+        return element.text
+
+
 
     ("'accessible_name', "
      "'aria_role', "
