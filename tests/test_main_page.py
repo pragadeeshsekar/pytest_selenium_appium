@@ -17,11 +17,9 @@ class TestMainPage(BaseTest):
     @pytest.mark.tags("ui")
     @pytest.mark.parametrize("category", ["business"])
     def test_news_page(self, category):
-        match category:
-            case "business":
-                self.main_page.business.is_present()
-                time.sleep(2)
-                self.main_page.business.click()
+        self.main_page.business.is_present()
+        time.sleep(2)
+        self.main_page.business.click()
         carousel_data = {}
         if len(self.driver.window_handles) > 1:
             self.driver.switch_to.window(self.driver.window_handles[-1])
