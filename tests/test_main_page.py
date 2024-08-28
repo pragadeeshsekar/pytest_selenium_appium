@@ -8,44 +8,24 @@ from selenium.webdriver.common.by import By
 
 from global_vars.paths import BASE_ROOT_PATH
 from tests.test_base import BaseTest
+from utilities import api_util
 
 
 class TestMainPage(BaseTest):
     driver = None
 
-    @pytest.mark.tags("ui", "done")
-    @pytest.mark.parametrize("category", ["india", "sports", "business"])
-    def test_headlines_present(self, category):
+    @pytest.mark.tags("ui")
+    @pytest.mark.parametrize("category", ["business"])
+    def test_news_page(self, category):
         match category:
-            case "india":
-                self.main_page.india.is_present()
-                self.main_page.india.click()
-            case "sports":
-                self.main_page.sports.is_present()
-                self.main_page.sports.click()
             case "business":
                 self.main_page.business.is_present()
-                self.main_page.business.click()
-        if len(self.driver.window_handles) > 1:
-            self.driver.switch_to.window(self.driver.window_handles[-1])
-            assert category.title() in self.driver.title
-            self.driver.close()
-            self.driver.switch_to.window(self.driver.window_handles[0])
-
-    @pytest.mark.tags("ui", "test")
-    @pytest.mark.parametrize("category", ["india"])
-    def test_headlines_present(self, category):
-        match category:
-            case "sports":
-                self.main_page.sports.is_present()
-                self.main_page.sports.click()
-            case "india":
-                self.main_page.india.is_present()
                 time.sleep(2)
-                self.main_page.india.click()
+                self.main_page.business.click()
         carousel_data = {}
         if len(self.driver.window_handles) > 1:
             self.driver.switch_to.window(self.driver.window_handles[-1])
+            time.sleep(2)
             assert category.title() in self.driver.title
             for index in [0, 1, 2]:
                 elements = self.india_page.slick_dots.native_webelements
@@ -63,11 +43,20 @@ class TestMainPage(BaseTest):
                 updated_time = int(date_object.strftime("%d%m%Y"))
                 headline_text = self.main_page.heading_title.get_text()
                 self.driver.back()
-                carousel_data.update({f"carousel_{index}": {"headline": headline_text,
-                                                            "news_link": link, "updated_time": updated_time}})
+                carousel_data.update({f"carousel_{index}": {"name": headline_text,
+                                                            "description": link, "price": updated_time,
+                                                            'item_type': 'Logitech-1'}})
             print(carousel_data)
             self.driver.close()
             self.driver.switch_to.window(self.driver.window_handles[0])
             if carousel_data:
                 with open(BASE_ROOT_PATH / f"temp_data/{category}.json", "w") as fp:
                     json.dump(carousel_data, fp)
+            created_ids = []
+            for page_data in carousel_data.values():
+                created_id = api_util.post_item(**page_data)
+                created_ids.append(created_id)
+                response = api_util.get_item(created_id)
+                response.pop("id")
+                assert response == page_data
+
