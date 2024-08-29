@@ -1,18 +1,19 @@
 from datetime import datetime
-import time
 
 import allure
 import pytest
 import yaml
+from appium import webdriver as appium_web_driver
+from appium.options.android import UiAutomator2Options
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 
+from core.constants import APPIUM_SERVER_URL
 from global_vars.paths import BASE_ROOT_PATH
 from utilities.custom_parser import AllureEnvironmentParser
-
 
 TEST_CONFIG = BASE_ROOT_PATH / 'test_config.yaml'
 
@@ -60,7 +61,7 @@ def pytest_runtest_makereport(item, call):
     setattr(item, "rep_" + rep.when, rep)
 
 
-@pytest.fixture(scope="class", autouse=True)
+@pytest.fixture(scope="class")
 def driver(request):
     browser = request.config.option.browser
     env = request.config.option.env
@@ -68,7 +69,7 @@ def driver(request):
     with open(TEST_CONFIG, 'r') as fd:
         test_config = yaml.load(fd, Loader=yaml.loader.SafeLoader)
     if browser == "firefox":
-        driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
+        selenium_driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()))
     elif browser == "chrome_headless":
         opts = webdriver.ChromeOptions()
         opts.add_argument("--headless")
@@ -82,8 +83,8 @@ def driver(request):
                              "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
             }
             opts.add_experimental_option("mobileEmulation", mobile_emulation)
-        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
-                                  options=opts)
+        selenium_driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
+                                           options=opts)
     else:
         opts = webdriver.ChromeOptions()
         if is_mobile:
@@ -94,14 +95,37 @@ def driver(request):
                              "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19"
             }
             opts.add_experimental_option("mobileEmulation", mobile_emulation)
-        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),
-                                  options=opts)
-    driver.implicitly_wait(5)
-    driver.maximize_window()
-    driver.get(test_config[env]["test_url"])
-    request.cls.driver = driver
-    yield driver
-    driver.quit()
+        selenium_driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=opts)
+    selenium_driver.implicitly_wait(5)
+    selenium_driver.maximize_window()
+    selenium_driver.get(test_config[env]["test_url"])
+    # Get performance Timing
+    nav_start_time = selenium_driver.execute_script("return window.performance.timing.navigationStart")
+    resp_time = selenium_driver.execute_script("return window.performance.timing.responseStart")
+    dom_complete_time = selenium_driver.execute_script("return window.performance.timing.domComplete")
+    # calculate performance
+    backend_perf = resp_time - nav_start_time
+    frontend_perf = dom_complete_time - resp_time
+    print(f"Front-end performance: {frontend_perf} ms")
+    print(f"Back-end performance: {backend_perf} ms")
+    request.cls.driver = selenium_driver
+
+
+@pytest.fixture(scope="class")
+def appium_driver(request):
+    # caps created for Android Pixel 8 - with sample app package name
+    capabilities = dict(
+        platformName='Android',
+        automationName='uiautomator2',
+        deviceName='Pixel_8_API_35 [emulator-5554]',
+        appPackage='com.sample.helloworld',  # app package name
+        appActivity='.MainActivity',
+        language='en',
+        locale='US'
+    )
+    appium_webdriver = appium_web_driver.Remote(APPIUM_SERVER_URL,
+                                                options=UiAutomator2Options().load_capabilities(capabilities))
+    request.cls.driver = appium_webdriver
 
 
 @pytest.fixture(scope="function", autouse=True)
